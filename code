@@ -1,0 +1,130 @@
+function varargout = gui(varargin)
+% GUI MATLAB code for homepage.fig
+%      GUI, by itself, creates a new GUI or raises the existing
+%      singleton*.
+%
+%      H = GUI returns the handle to a new GUI or the handle to
+%      the existing singleton*.
+%
+%      GUI('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in GUI.M with the given input arguments.
+%
+%      GUI('Property','Value',...) creates a new GUI or raises the
+%      existing singleton*.  Starting from the left, property value pairs are
+%      applied to the GUI before gui_OpeningFcn gets called.  An
+%      unrecognized property name or invalid value makes property application
+%      stop.  All inputs are passed to gui_OpeningFcn via varargin.
+gui_Singleton = 1;
+gui_State = struct('gui_Name',       mfilename, ...
+                   'gui_Singleton',  gui_Singleton, ...
+                   'gui_OpeningFcn', @gui_OpeningFcn, ...
+                   'gui_OutputFcn',  @gui_OutputFcn, ...
+                   'gui_LayoutFcn',  [] , ...
+                   'gui_Callback',   []);
+if nargin && ischar(varargin{1})
+    gui_State.gui_Callback = str2func(varargin{1});
+end
+
+if nargout
+    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
+else
+    gui_mainfcn(gui_State, varargin{:});
+end
+function gui_OpeningFcn(hObject,~, handles, varargin)
+% Choose default command line output for homepage
+handles.output = hObject;
+guidata(hObject,handles);
+
+%Text to speech for server busy
+NET.addAssembly('System.Speech')
+mySpeaker = System.Speech.Synthesis.SpeechSynthesizer;
+mySpeaker.Rate = -2;
+Speak(mySpeaker,'Sorry for the inconvenience! Server is busy! Please wait for a while');
+
+%Adding background to GUI
+ah = axes('unit', 'normalized', 'position', [0.168 -0.002 0.652 0.753]);
+% import the background image and show it on the axes
+bg = imread('gui_bg.jpg'); imagesc(bg);
+% prevent plotting over the background and turn the axis off
+set(ah,'handlevisibility','off','visible','off')
+% making sure the background is behind all the other uicontrols
+%uistack(ah, 'bottom');
+
+a=imread('logo.jpg');
+imshow(a);
+
+function varargout = gui_OutputFcn(~, ~, handles)
+% Get default command line output from handles structure
+varargout{1} = handles.output;
+
+function pushbutton1_Callback(~, ~, ~)
+
+%% image read
+[fname, path]=uigetfile('*.*','Enter an image');
+fname=strcat(path,fname);
+I=imread(fname);
+
+%% PREPROCESSING STAGE -1 Gray conversion
+GI = rgb2gray(I);
+%% PREPROCESSING STAGE -2
+BGI = imopen(GI,strel('disk',15));
+%% PREPROCESSING STAGE -3 Optimization
+I2 = GI - BGI;
+%% PREPROCESSING STAGE -4 Gray Color adjustment
+I3 = imadjust(I2);
+%% PREPROCESSING STAGE -5 Back Ground subtraction
+level = graythresh(I3);
+bw = im2bw(I3,level);
+bw = bwareaopen(bw, 50);
+
+%% Feature Extraction
+I6 =  GI;
+offsets0 = [zeros(20,1) (1:20)'];
+glcms1 = graycomatrix(I6,'offset',offsets0);
+stats = graycoprops(glcms1,{'contrast','correlation','energy','homogeneity'})
+
+%Extracting Features
+a = stats.Contrast;
+b = stats.Correlation;
+c = stats.Energy;
+d = stats.Homogeneity;
+
+%Classification
+%% AREA CALCULATION
+area = nnz(bw);
+%% CLASSIFICATION OF TUMOR
+if (area >= 7700) && (area < 10000)
+    helpdlg('TUMOR STAGE-1');
+elseif (area >= 10000) && (area <15000)
+    helpdlg('TUMOR STAGE-2');
+elseif (area >= 15000) && (area < 25000)
+    helpdlg('TUMOR STAGE-3');
+elseif (area >= 25000)
+    helpdlg('TUMOR STAGE-4');
+else
+    helpdlg('NO TUMOR');
+end
+
+%% Displaying images on figure
+figure;
+subplot(1,3,1),imshow(I),title('INPUT IMAGE');
+subplot(1,3,2),imshow(GI),title('GRAY IMAGE');
+subplot(1,3,3),imshow(BGI),title('TUMOURED IMAGE');
+
+figure;
+subplot(2,2,1),plot([stats.Contrast]),title('Texture Contrast as a function of offset'),xlabel('Horizontal offset'),ylabel('Contrast');
+subplot(2,2,2),plot([stats.Correlation]),title('Texture Correlation as a function of offset'),xlabel('Horizontal offset'),ylabel('Correlation');
+subplot(2,2,3),plot([stats.Energy]),title('Texture Energy as a function of offset'),xlabel('Horizontal offset'),ylabel('Energy');
+subplot(2,2,4),plot([stats.Homogeneity]),title('Texture Homogeneity as a function of offset'),xlabel('Horizontal offset'),ylabel('Homogeneity');
+function pushbutton2_Callback(~, ~, ~)
+about
+function edit2_Callback(~, ~, ~)
+function edit2_CreateFcn(hObject, ~, ~)
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+
+
